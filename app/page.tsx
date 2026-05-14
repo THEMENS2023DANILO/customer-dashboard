@@ -25,6 +25,8 @@ type Result = {
   prescriptions?: Prescription[]
   invoices?: Invoice[]
 }
+type TrackEvent = { date: string; description: string; detail: string | null; city: string | null }
+type TrackResult = { found: boolean; events?: TrackEvent[]; dtPrevista?: string; error?: string }
 
 function fmt(date: string) {
   return new Date(date).toLocaleDateString('pt-BR')
@@ -63,6 +65,64 @@ function invoiceStatusBadge(source: string, status: string) {
   }
   if (status?.toLowerCase() === 'pendente') return <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-900 text-yellow-300">Pendente</span>
   return <span className="px-2 py-0.5 rounded-full text-xs bg-green-900 text-green-300">{status}</span>
+}
+
+function TrackingChip({ code }: { code: string }) {
+  const [open, setOpen] = useState(false)
+  const [data, setData] = useState<TrackResult | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  async function toggle() {
+    if (open) { setOpen(false); return }
+    setOpen(true)
+    if (data) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/tracking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      })
+      setData(await res.json())
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={toggle}
+        className="text-xs bg-blue-900 text-blue-300 px-2 py-1 rounded-lg font-mono hover:bg-blue-800 transition-colors"
+      >
+        📦 {code} {open ? '▲' : '▼'}
+      </button>
+      {open && (
+        <div className="mt-2 bg-gray-900 rounded-lg p-3 text-xs">
+          {loading && <p className="text-gray-400">Consultando Correios...</p>}
+          {data && !data.found && <p className="text-yellow-400">Rastreio não encontrado nos Correios</p>}
+          {data?.error && <p className="text-red-400">{data.error}</p>}
+          {data?.dtPrevista && (
+            <p className="text-gray-400 mb-2">
+              Previsão: <span className="text-white">{new Date(data.dtPrevista).toLocaleDateString('pt-BR')}</span>
+            </p>
+          )}
+          {data?.events?.map((e, i) => (
+            <div key={i} className={`py-1.5 ${i < (data.events?.length ?? 0) - 1 ? 'border-b border-gray-700' : ''}`}>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-white font-medium">{e.description}</span>
+                <span className="text-gray-500 whitespace-nowrap">
+                  {new Date(e.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+              {e.detail && <p className="text-gray-400 mt-0.5">{e.detail}</p>}
+              {e.city && <p className="text-gray-500">{e.city}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Home() {
@@ -218,7 +278,7 @@ export default function Home() {
                     </div>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {inv.tracking
-                        ? <span className="text-xs bg-blue-900 text-blue-300 px-2 py-1 rounded-lg font-mono">📦 {inv.tracking}</span>
+                        ? <TrackingChip code={inv.tracking} />
                         : <span className="text-xs bg-gray-700 text-gray-500 px-2 py-1 rounded-lg">Sem rastreio</span>
                       }
                       {inv.order_id && (
