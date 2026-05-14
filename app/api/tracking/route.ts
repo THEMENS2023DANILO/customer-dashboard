@@ -22,9 +22,10 @@ async function getToken(): Promise<string> {
   const data = await res.json()
   if (!data.token) throw new Error(data.msgs?.[0] ?? 'Auth failed')
 
-  cachedToken = data.token as string
+  const token = data.token as string
+  cachedToken = token
   tokenExpiry = Date.now() + 23 * 60 * 60 * 1000 // 23h (token lasts 24h)
-  return cachedToken
+  return token
 }
 
 export async function POST(req: NextRequest) {
