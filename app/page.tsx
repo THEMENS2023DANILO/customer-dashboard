@@ -17,7 +17,7 @@ type Invoice = {
   value: string; status: string; tracking: string | null
   danfe: string | null; order_id: string | null
 }
-type Customer = { name: string; cpf: string; email: string; phone: string }
+type Customer = { name: string; cpf: string; email: string; phone: string | null }
 type Result = {
   found: boolean; error?: string
   customer?: Customer
@@ -37,9 +37,10 @@ function fmtMoney(v: number | string) {
 function fmtCPF(cpf: string) {
   return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
 }
-function fmtPhone(p: string) {
+function fmtPhone(p: string | null) {
+  if (!p) return '—'
   const d = p.replace(/\D/g, '').replace(/^55/, '')
-  return d.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  return d.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3') || p
 }
 
 function orderStatusBadge(status: string, payment: string) {
